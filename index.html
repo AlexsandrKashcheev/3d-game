@@ -78,6 +78,7 @@
 
         //создание препятствий
         let lastRand = 0;
+        let boxArray = [];
         const createBox = (xPos, zPos) => {
                 let box = new BABYLON.MeshBuilder.CreateBox('box', {
                     width: 2,
@@ -97,6 +98,7 @@
                 );
                 shadowGenerator.getShadowMap().renderList.push(box);
                 box.receiveShadows = true;
+                boxArray.push(box);
         }
         const createBoxRow = (zPos) => {
             let rand = Math.floor(Math.random() * 3);
@@ -139,6 +141,13 @@
         //алгоритм
         let restartBtn = window.document.querySelector('#restart-btn');
 
+        scene.registerBeforeRender(() => {
+            for(let i = 0; i < boxArray.length; i++){
+                if(ball.intersectsMesh(boxArray[i], true)){
+                    boxArray[i].material.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
+                }
+            }
+        });
         engine.runRenderLoop(() => {
             camera.position.z = ball.getAbsolutePosition().z - 12;
             light.position.z = ball.getAbsolutePosition().z;
