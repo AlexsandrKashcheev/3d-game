@@ -7,19 +7,44 @@
     <canvas id="render-canvas"></canvas>
     <div id="user-interface">
         <img id="restart-btn" src="assets/restart.png" >
+        <img id="coin-img" src="assets/coin.png">
+        <p id="coin-score">0</p>
+        <p id="score">0</p>
     </div>
 
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Pangolin&display=swap');
         body, #render-canvas, #user-interface {
             margin: 0;
             width: 100%;
             height: 100vh;
+            font-family: 'Black Ops One', cursive;
+            user-select: none;
         }
         #restart-btn {
             position: absolute;
             right: 0;
             bottom: 0;
             width: 200px;
+        }
+        #coin-img{
+            position: absolute;
+            top: 2vh;
+            right: 2vh;
+            width: 5vh;
+        }
+        #coin-score {
+            position: absolute;
+            top: -5vh;
+            right: 8vh;
+            font-size: 6vh;
+        }
+        #score {
+            position: absolute;
+            top: 10vh;
+            width: 100%;
+            text-align: center;
+            font-size: 8vh;
         }
     </style>
 
@@ -42,7 +67,7 @@
             cameraExposure: 1
         });
         //Создание камеры
-        let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 10, -12), scene);
+        let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 10, -15), scene);
         camera.setTarget(new BABYLON.Vector3(0, 0, 0));
 
         //создание света
@@ -105,6 +130,7 @@
         //создание препятствий
         let lastRand = 0;
         let boxArray = [];
+        let pointArray = [];
         const createBox = (xPos, zPos) => {
                 let box = new BABYLON.MeshBuilder.CreateBox('box', {
                     width: 2,
@@ -134,7 +160,8 @@
             lastRand = rand;
             for(let i = 0; i < 3; i++){
                 if(i === rand) {
-                    createCoin(new BABYLON.Vector3((i*2)-2, 1, 3+zPos))    
+                    createCoin(new BABYLON.Vector3((i*2)-2, 1, 3+zPos));
+                    pointArray.push(new BABYLON.Vector3((i*2)-2, 1, 3+zPos))    
                     continue;
                 }
                 createBox((i*2)-2, zPos);
@@ -170,6 +197,8 @@
 
         //алгоритм
         let restartBtn = window.document.querySelector('#restart-btn');
+        let scoreInfo = window.document.querySelector('#score');
+        let score = 0;
 
         scene.registerBeforeRender(() => {
             for(let i = 0; i < boxArray.length; i++){
@@ -180,6 +209,13 @@
             for(let i = 0; i < coinArray.length; i++){
                 if(ball.intersectsMesh(coinArray[i], false)){
                     coinArray[i].dispose();
+                }
+            }
+            for(let i = 0; i < pointArray.length; i++){
+                if(ball.intersectsPoint(pointArray[i])){
+                    pointArray.splice(i, 1);
+                    score++;
+                    scoreInfo.innerText = score;
                 }
             }
         });
