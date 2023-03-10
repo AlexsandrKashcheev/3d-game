@@ -9,7 +9,15 @@
         <img id="restart-btn" src="assets/restart.png" >
         <img id="coin-img" src="assets/coin.png">
         <p id="coin-score">0</p>
-        <p id="score">0</p>
+        <div id="play-screen">
+            <p id="score">0</p>
+        </div>
+        <div id="game-over-screen">
+            <p id="game-over-info" class="game-over-p">GAME OVER</p>
+            <p id="best-score" class="game-over-p">BEST: 0</p>
+            <p id="now-score" class="game-over-p">NOW: 0</p>
+            <p id="tap-info" class="game-over-p">Tap to restart</p>
+        </div>
     </div>
 
     <style>
@@ -21,6 +29,8 @@
             font-family: 'Black Ops One', cursive;
             user-select: none;
         }
+
+        /* PLAY SCREEN */
         #restart-btn {
             position: absolute;
             right: 0;
@@ -46,11 +56,60 @@
             text-align: center;
             font-size: 8vh;
         }
+
+        /* GAME OVER SCREEN */
+        #game-over-screen {
+            display: none;
+        }
+        .game-over-p{
+            position: absolute;
+            width: 100%;
+            text-align: center;
+        }
+        #game-over-info {
+            top: 10vh;
+            font-size: 7vh;
+        }
+        #best-score{
+            top: 30vh;
+            font-size: 6vh;
+        }
+        #now-score{
+            top: 40vh;
+            font-size: 6vh;
+        }
+        #tap-info {
+            top: 70vh;
+            font-size: 4vh;
+            animation-name: tap-info_anim;
+            animation-duration: 2s;
+            animation-iteration-count: infinite;
+        }
+
+        /* Анимации */
+        @keyframes tap-info_anim {
+            from{
+                font-size: 4vh;
+                top: 70vh;
+                opacity: 0;
+            }
+            to{
+                font-size: 4vh;
+                top: 70vh;
+                opacity: 0;
+            }
+            50%{
+                font-size: 4.5vh;
+                top: 69.5vh;
+                opacity: 1;
+            }
+        }
     </style>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/cannon.js"></script>
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylon.waterMaterial.js"></script>
     <script>
         //СОЗДАНИЕ МИРА
         let canvas = document.querySelector('#render-canvas');
@@ -66,8 +125,34 @@
             cameraContrast: 2.5,
             cameraExposure: 1
         });
+
+        //создание неба
+        let skyBox = new BABYLON.MeshBuilder.CreateBox('skyBox', {size: 1000}, scene);
+        let skyBoxMaterial = new BABYLON.StandardMaterial('skyBox', scene);
+        skyBoxMaterial.reflectionTexture = new BABYLON.CubeTexture('assets/environment/TropicalSunnyDay', scene);
+        skyBoxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+        skyBoxMaterial.backFaceCulling = false; //не убирать внутренние грани
+        skyBox.material = skyBoxMaterial;
+
+        //создание воды
+        let waterGround = new BABYLON.MeshBuilder.CreateGround('ground', {width: 512, height: 512}, scene);
+        let waterMaterial = new BABYLON.WaterMaterial('water', scene);
+        waterMaterial.bumpTexture = new BABYLON.Texture('assets/environment/waterbump.png', scene);
+        waterMaterial.addToRenderList(skyBox);
+        waterGround.material = waterMaterial;
+        waterGround.position = new BABYLON.Vector3(0, -3, 0);
+
+        //создание поверхности морского дна
+        let ground = new BABYLON.MeshBuilder.CreateGround('ground', {width: 30, height: 30}, scene);
+        let groundMaterial = new BABYLON.StandardMaterial('material', scene);
+        groundMaterial.emissiveTexture = new BABYLON.Texture('assets/environment/ground.jpg', scene);
+        ground.material = groundMaterial;
+        ground.position = new BABYLON.Vector3(0, -5, 13);
+        waterMaterial.addToRenderList(ground);
+
+
         //Создание камеры
-        let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 10, -15), scene);
+        let camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 8, -15), scene);
         camera.setTarget(new BABYLON.Vector3(0, 0, 0));
 
         //создание света
@@ -205,6 +290,15 @@
         let score = 0;
         let coinScoreInfo = window.document.querySelector('#coin-score');
         let coinScore = 0;
+        let playScreen = window.document.querySelector('#play-screen');
+        let gameOverScreen = window.document.querySelector('#game-over-screen');
+        let bestScoreInfo = window.document.querySelector('#best-score');
+        let nowScoreInfo = window.document.querySelector('#now-score');
+
+        const PLAY = 'play';
+        const GAME_OVER = 'game_over';
+
+        let state = PLAY;
         
         //функции
         const saveCoinScore = () => {
@@ -216,6 +310,30 @@
             : 0
             coinScoreInfo.innerText = coinScore;
         }
+        const saveBestScore = () => {
+            localStorage.setItem('bestScore', score);
+        }
+        const loadBestScore = () => {
+            return (localStorage.getItem('bestScore'))
+            ? localStorage.getItem('bestScore')
+            : 0
+        } 
+
+
+        const setGameOverScreen = () => {
+            state = GAME_OVER;
+            playScreen.style.display = 'none';
+            gameOverScreen.style.display = 'block';
+            let bestScore = loadBestScore();
+            if(score > bestScore){
+                saveBestScore();
+                bestScore = score;
+                bestScoreInfo.style.color = '#0003ad';
+                nowScoreInfo.style.color = '#0003ad';
+            }
+            bestScoreInfo.innerText = `BEST: ${bestScore}`;
+            nowScoreInfo.innerText = `NOW: ${score}`;
+        }
 
         loadCoinScore();
 
@@ -225,6 +343,7 @@
             for(let i = 0; i < boxArray.length; i++){
                 if(ball.intersectsMesh(boxArray[i], true)){
                     boxArray[i].material.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
+                    setGameOverScreen();
                 }
             }
             for(let i = 0; i < coinArray.length; i++){
@@ -243,10 +362,13 @@
                     scoreInfo.innerText = score;
                 }
             }
-        });
-        engine.runRenderLoop(() => {
+            skyBox.position.z = ball.getAbsolutePosition().z;
+            waterGround.position.z = ball.getAbsolutePosition().z;
+            ground.position.z = ball.getAbsolutePosition().z+13;
             camera.position.z = ball.getAbsolutePosition().z - 12;
             light.position.z = ball.getAbsolutePosition().z;
+        });
+        engine.runRenderLoop(() => {
             scene.render();
         });
 
@@ -255,18 +377,22 @@
         restartBtn.addEventListener('click', () => window.location.reload());
 
         window.addEventListener('touchstart', (event) => {
-            let x = event.touches[0].screenX;
+            if(state !== GAME_OVER) {
+                let x = event.touches[0].screenX;
 
-            if(x > (window.screen.width / 2)){
-                ball.physicsImpostor.applyImpulse(
-                new BABYLON.Vector3(10, 0, 0),
-                ball.getAbsolutePosition()
-            );
+                if(x > (window.screen.width / 2)){
+                    ball.physicsImpostor.applyImpulse(
+                    new BABYLON.Vector3(10, 0, 0),
+                    ball.getAbsolutePosition()
+                );
+                }else {
+                    ball.physicsImpostor.applyImpulse(
+                    new BABYLON.Vector3(-10, 0, 0),
+                    ball.getAbsolutePosition()
+                );
+                }
             }else {
-                ball.physicsImpostor.applyImpulse(
-                new BABYLON.Vector3(-10, 0, 0),
-                ball.getAbsolutePosition()
-            );
+                window.location.reload();
             }
             
         });
