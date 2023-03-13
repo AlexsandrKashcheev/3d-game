@@ -10,6 +10,10 @@
         <img id="restart-btn" src="assets/restart.png" >
         <img id="coin-img" src="assets/coin.png">
         <p id="coin-score" class="text-gradient">0</p>
+        <div id="nav-bar">
+            <img id="shop-icon" src="assets/shop/shop-icon.png">
+            <img id="back-icon" src="assets/shop/back-icon.png">
+        </div>
         <div id="play-screen">
             <p id="score" class="text-gradient">0</p>
         </div>
@@ -18,6 +22,15 @@
             <p id="best-score" class="game-over-p text-gradient">BEST: 0</p>
             <p id="now-score" class="game-over-p text-gradient">NOW: 0</p>
             <p id="tap-info" class="game-over-p text-gradient">Tap to restart</p>
+        </div>
+        <div id="shop-screen">
+            <img id="left-arrow" onclick="arrowClick(-1)" src="assets/shop/left-arrow.png">
+            <img id="right-arrow" onclick="arrowClick(1)" src="assets/shop/right-arrow.png">
+            <div id="price-block">
+                <img id="lock-icon" src="assets/shop/lock-icon.png">
+                <span id="price" class="text-gradient">10</span>
+                <img id="price-coin-img" src="assets/coin.png">
+            </div>
         </div>
     </div>
 
@@ -100,6 +113,61 @@
             animation-name: tap-info_anim;
             animation-duration: 2s;
             animation-iteration-count: infinite;
+        }
+
+        /* SHOP SCREEN */
+
+        #shop-screen {
+            display: none;
+        }
+
+        #nav-bar, #shop-icon, #back-icon {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #shop-icon, #back-icon{
+            width: 6vh;
+            padding: 1vh;
+            display: none;
+        }
+
+        #left-arrow, #right-arrow {
+            position: absolute;
+            top: 60vh;
+            width: 10vh;
+        }
+
+        #left-arrow {
+            left: 0;
+        }
+        
+        #right-arrow {
+            right: 0;
+        }
+
+        #price-block {
+            position: absolute;
+            top: 60vh;
+            left: 0;
+            width: 40%;
+            margin-left: 30%;
+            font-size: 7vh;
+            text-align: center;
+        }
+
+        #lock-icon {
+            position: relative;
+            width: 10vh;
+            padding-bottom: 3vh;
+        }
+
+        #price-coin-img {
+            position: relative;
+            bottom: 0;
+            right: 0;
+            width: 5vh;
         }
 
         /* Анимации */
@@ -224,6 +292,7 @@
                     shadowGenerator.addShadowCaster(coin);
                     coin.receiveShadows = true;
                     coinArray.push(coin);
+                    shopIcon.style.display = 'block';
                 }
             );
         }
@@ -278,12 +347,14 @@
             lastRand = rand;
             for(let i = 0; i < 3; i++){
                 if(i === rand) {
-                    if(Math.random() < 0.5) {
+                    if(zPos === 30){
+                        createCoin(new BABYLON.Vector3((i*2)-2, 0.65, 3+zPos));
+                    }else if(Math.random() < 0.5) {
                         createCoin(new BABYLON.Vector3((i*2)-2, 0.65, 3+zPos));
                     }else{
                         //что то еще
                     }
-                    pointArray.push(new BABYLON.Vector3((i*2)-2, 1, 3+zPos))    
+                    pointArray.push(new BABYLON.Vector3((i*2)-2, 0, 3+zPos))    
                     continue;
                 }
                 createBox((i*2)-2, zPos);
@@ -298,7 +369,7 @@
         
 
         //создание мяча и материала для него
-        const createBall = () => {
+        const createBall = (textureNum, needPhysics = true) => {
 
             let ball = new BABYLON.MeshBuilder.CreateSphere('sphere', {
                 diameter: 0.8
@@ -306,10 +377,10 @@
             ball.position.y = 5.6;
 
             let ballMaterial = new BABYLON.StandardMaterial('material', scene);
-            ballMaterial.emissiveTexture = new BABYLON.Texture('assets/ball.png');
+            ballMaterial.emissiveTexture = new BABYLON.Texture(`assets/shop/ball${textureNum}.jpg`);
             ball.material = ballMaterial;
             shadowGenerator.getShadowMap().renderList.push(ball);
-            ball.physicsImpostor = new BABYLON.PhysicsImpostor(
+            if(needPhysics) ball.physicsImpostor = new BABYLON.PhysicsImpostor(
                 ball,
                 BABYLON.PhysicsImpostor.SphereImpostor,
                 {
@@ -335,20 +406,77 @@
         let gameOverScreen = window.document.querySelector('#game-over-screen');
         let bestScoreInfo = window.document.querySelector('#best-score');
         let nowScoreInfo = window.document.querySelector('#now-score');
+        let shopIcon = window.document.querySelector('#shop-icon');
+        let backIcon = window.document.querySelector('#back-icon');
+        let shopScreen = window.document.querySelector('#shop-screen');
+        let priceBlock = window.document.querySelector('#price-block');
 
         let ball = null;
         const PLAY = 'play';
         const GAME_OVER = 'game_over';
+        const IN_MOVE = 'in_move';
 
         let state = PLAY;
         let lastPoint = 0;
         let nextPoint = 0;
         let speed = 10;
+        let demoArray = [];
+        let demoTimer = null;
+        let shopState = ['1', '0', '0', '0', '0'];
+        let priceArray = [30, 100, 150, 200, 1000];
+        let activeTexture = 0;
+        let demoPos = 0;
+
         
         //функции
+        const updatePriceBlock = () => {
+            (shopState[demoPos] === '1')
+                ? priceBlock.style.opacity = '0'
+                : priceBlock.style.opacity = '1'
+            window.document.querySelector('#price').innerText = priceArray[demoPos];
+        }
+        const arrowClick = (dir) => {
+            demoPos += dir;
+            if(demoPos < 0) demoPos = 4
+            else if(demoPos > 4) demoPos = 0;
+            demoArray[0].material.emissiveTexture = new BABYLON.Texture(`assets/shop/ball${demoPos}.jpg`, scene);
+            updatePriceBlock();
+        }
+        const saveShopState = () => {
+            localStorage.setItem('shopState', shopState.join(','));
+            localStorage.setItem('activeTexture', activeTexture);
+        }
+        const loadShopState = () => {
+            shopState = (localStorage.getItem('shopState'))
+                ? localStorage.getItem('shopState').split(',')
+                : shopState;
+            activeTexture = (localStorage.getItem('activeTexture'))
+                ? Number.parseInt(localStorage.getItem('activeTexture'))
+                : activeTexture;
+        }
         const clearArray = (array, isMesh = true) => {
             if(isMesh) array.map(elem => elem.dispose());
             while(array.length) array.pop();
+        }
+        const deleteDemoObjects = () => {
+            clearArray(demoArray);
+            clearInterval(demoTimer);
+        }
+        const createDemoObjects = () => {
+            for(let i = 0; i < 2; i++){
+                let ball = createBall(activeTexture, false);
+                ball.position = new BABYLON.Vector3(0, i*4, i*2);
+                ball.scaling = new BABYLON.Vector3(2, 2, 2);
+                demoArray.push(ball);
+            }
+            demoTimer = setInterval(() => {
+                demoArray[1].rotate(
+                    new BABYLON.Vector3(-1, 0, -1),
+                    Math.PI * (engine.getDeltaTime()/1000),
+                    BABYLON.Space.WORLD
+                )
+            }, 20);
+            updatePriceBlock();
         }
         const deleteGameObjects = () => {
             ball.dispose();
@@ -367,7 +495,7 @@
             }
             lastPoint = 0;
             nextPoint = pointArray[0].x;
-            ball = createBall();
+            ball = createBall(activeTexture);
             score = 0;
             scoreInfo.innerText = `${score}`;
             speed = 10;
@@ -408,6 +536,7 @@
             nowScoreInfo.innerText = `NOW: ${score}`;
         }
 
+        loadShopState();
         loadCoinScore();
         createGameObjects();
 
@@ -456,17 +585,56 @@
 
         restartBtn.addEventListener('click', () => window.location.reload());
 
+        priceBlock.addEventListener('click', () => {
+            if(shopState[demoPos] === '0'){
+                if(priceArray[demoPos] <= coinScore){
+                    coinScore -= priceArray[demoPos];
+                    coinScoreInfo.innerText = coinScore;
+                    saveCoinScore();
+                    shopState[demoPos] = '1';
+                    saveShopState();
+                    updatePriceBlock();
+                }
+            }else{
+                activeTexture = demoPos;
+                saveShopState();
+                demoArray[1].material.emissiveTexture = new BABYLON.Texture(`assets/shop/ball${activeTexture}.jpg`, scene);
+            }
+        });
+
+        shopIcon.addEventListener('click', () => {
+            if(state !== IN_MOVE){
+                shopIcon.style.display = 'none';
+                backIcon.style.display = 'block';
+                playScreen.style.display = 'none';
+                shopScreen.style.display = 'block';
+                deleteGameObjects();
+                createDemoObjects();
+            }
+        });
+        backIcon.addEventListener('click', () => {
+            shopIcon.style.display = 'block';
+            backIcon.style.display = 'none';
+            shopScreen.style.display = 'none'
+            playScreen.style.display = 'block';
+            deleteDemoObjects();
+            createGameObjects();
+        });
         
         window.addEventListener('touchend', () => {
             if(state === GAME_OVER){
+                event.preventDefault();
                 gameOverScreen.style.display = 'none';
                 deleteGameObjects();
                 createGameObjects();
                 playScreen.style.display = 'block';
                 state = PLAY;
-            }else{
+                shopIcon.style.opacity = '1';
+            }else if (event.changedTouches[0].screenY > 0.3 * window.screen.height){
                 if(ball.getAbsolutePosition().z === 0){
                     ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, speed));
+                    state = IN_MOVE;
+                    shopIcon.style.opacity = '0.7';
                 }else{
                     if(lastPoint > nextPoint){
                         ball.translate(new BABYLON.Vector3(-2, 0, 0), 1, BABYLON.Space.WORLD);
