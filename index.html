@@ -453,6 +453,7 @@
             activeTexture = (localStorage.getItem('activeTexture'))
                 ? Number.parseInt(localStorage.getItem('activeTexture'))
                 : activeTexture;
+            demoPos = activeTexture;
         }
         const clearArray = (array, isMesh = true) => {
             if(isMesh) array.map(elem => elem.dispose());
@@ -617,6 +618,7 @@
             backIcon.style.display = 'none';
             shopScreen.style.display = 'none'
             playScreen.style.display = 'block';
+            demoPos = activeTexture;
             deleteDemoObjects();
             createGameObjects();
         });
